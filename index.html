@@ -17,9 +17,9 @@
             border: 1px solid #2d333b;
             border-radius: 12px;
         }
-        .btn-good { background-color: #059669; transition: all 0.2s; }
+        .btn-good { background-color: #059669; transition: all 0.2s; cursor: pointer; }
         .btn-good:hover { background-color: #10b981; transform: scale(1.02); }
-        .btn-bad { background-color: #dc2626; transition: all 0.2s; }
+        .btn-bad { background-color: #dc2626; transition: all 0.2s; cursor: pointer; }
         .btn-bad:hover { background-color: #ef4444; transform: scale(1.02); }
         
         .project-tab {
@@ -32,6 +32,10 @@
             color: #eab308;
             background: rgba(234, 179, 8, 0.05);
         }
+        button:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
     </style>
 </head>
 <body class="p-4 md:p-8">
@@ -43,11 +47,11 @@
                 <h1 class="text-3xl font-bold text-white tracking-tight flex items-center gap-3">
                     <span class="bg-yellow-500 text-black px-2 py-1 rounded">PRO</span> DIGITAL SLATE
                 </h1>
-                <p class="text-gray-500 text-sm uppercase tracking-widest mt-1">Gestión de Proyectos en la Nube</p>
+                <p class="text-gray-500 text-sm uppercase tracking-widest mt-1">Gestión de Proyectos</p>
             </div>
             <div class="text-right bg-black/30 p-3 rounded-lg border border-white/5">
                 <div id="clock" class="text-2xl font-mono text-yellow-500">00:00:00</div>
-                <p id="user-id-display" class="text-[10px] text-gray-500 font-mono mt-1">Cargando usuario...</p>
+                <p id="user-id-display" class="text-[10px] text-gray-500 font-mono mt-1">Iniciando sistema...</p>
             </div>
         </header>
 
@@ -60,7 +64,7 @@
                     <div id="projectList" class="space-y-1 mb-4 max-h-64 overflow-y-auto">
                         <!-- Proyectos cargados aquí -->
                     </div>
-                    <button onclick="createNewProject()" class="w-full py-2 border border-dashed border-gray-600 rounded text-xs text-gray-400 hover:border-yellow-500 hover:text-yellow-500 transition-colors">
+                    <button id="btnNewProject" class="w-full py-2 border border-dashed border-gray-600 rounded text-xs text-gray-400 hover:border-yellow-500 hover:text-yellow-500 transition-colors">
                         + NUEVO PROYECTO
                     </button>
                 </div>
@@ -72,7 +76,7 @@
                 <div class="slate-card p-6 mb-8">
                     <div class="flex justify-between items-center mb-6 border-b border-gray-800 pb-4">
                         <h2 id="activeProjectTitle" class="text-xl font-bold text-white">Selecciona un proyecto</h2>
-                        <span id="syncStatus" class="text-[10px] text-green-500 uppercase font-bold">● Sincronizado</span>
+                        <span id="syncStatus" class="text-[10px] text-yellow-500 uppercase font-bold tracking-widest">● Verificando...</span>
                     </div>
 
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
@@ -83,9 +87,9 @@
                         <div>
                             <label class="block text-xs font-semibold text-gray-500 mb-2 uppercase tracking-tighter">Toma (Take)</label>
                             <div class="flex items-center space-x-2">
-                                <button onclick="changeTake(-1)" class="bg-gray-800 px-3 py-2 rounded hover:bg-gray-700 text-xs">-</button>
+                                <button id="takeMinus" class="bg-gray-800 px-3 py-2 rounded hover:bg-gray-700 text-xs">-</button>
                                 <input type="number" id="take" value="1" class="w-full bg-black border border-gray-700 rounded p-3 text-white text-center text-xl font-bold outline-none">
-                                <button onclick="changeTake(1)" class="bg-gray-800 px-3 py-2 rounded hover:bg-gray-700 text-xs">+</button>
+                                <button id="takePlus" class="bg-gray-800 px-3 py-2 rounded hover:bg-gray-700 text-xs">+</button>
                             </div>
                         </div>
                         <div>
@@ -93,7 +97,7 @@
                             <input type="text" id="clip" placeholder="C001" class="w-full bg-black border border-gray-700 rounded p-3 text-white focus:border-yellow-500 outline-none text-center text-xl font-bold uppercase">
                         </div>
                         <div class="col-span-2 md:col-span-1 flex items-end">
-                             <button onclick="exportCSV()" class="w-full bg-gray-700 hover:bg-gray-600 text-white text-[10px] py-4 rounded font-bold uppercase leading-tight">
+                             <button id="btnExport" class="w-full bg-gray-700 hover:bg-gray-600 text-white text-[10px] py-4 rounded font-bold uppercase leading-tight">
                                 Descargar Reporte
                              </button>
                         </div>
@@ -105,10 +109,10 @@
                     </div>
 
                     <div class="grid grid-cols-2 gap-4 mt-6">
-                        <button onclick="logTake('BUENA')" class="btn-good py-6 rounded-xl text-white font-bold text-xl uppercase shadow-lg shadow-green-900/20">
+                        <button id="btnGood" class="btn-good py-6 rounded-xl text-white font-bold text-xl uppercase shadow-lg shadow-green-900/20">
                             Toma Buena
                         </button>
-                        <button onclick="logTake('MALA')" class="btn-bad py-6 rounded-xl text-white font-bold text-xl uppercase shadow-lg shadow-red-900/20">
+                        <button id="btnBad" class="btn-bad py-6 rounded-xl text-white font-bold text-xl uppercase shadow-lg shadow-red-900/20">
                             Toma Mala
                         </button>
                     </div>
@@ -130,7 +134,7 @@
                                 </tr>
                             </thead>
                             <tbody id="logBody" class="text-sm">
-                                <!-- Datos de Firestore aquí -->
+                                <!-- Datos aquí -->
                             </tbody>
                         </table>
                     </div>
@@ -145,127 +149,176 @@
         import { getAuth, signInAnonymously, onAuthStateChanged, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, setDoc, collection, query, onSnapshot, addDoc, updateDoc, deleteDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        const firebaseConfig = JSON.parse(__firebase_config);
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getFirestore(app);
+        // CONFIGURACIÓN DE ESTADO
+        let firebaseConfig = null;
+        try {
+            firebaseConfig = JSON.parse(typeof __firebase_config !== 'undefined' ? __firebase_config : 'null');
+        } catch (e) {}
+
         const appId = typeof __app_id !== 'undefined' ? __app_id : 'prod-slate-app';
-
-        let user = null;
-        let activeProjectId = null;
+        let db, auth, user, activeProjectId;
         let currentLogs = [];
+        let isCloud = false;
 
-        // 1. Auth Init
-        const initAuth = async () => {
-            if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
-                await signInWithCustomToken(auth, __initial_auth_token);
-            } else {
-                await signInAnonymously(auth);
-            }
-        };
-        initAuth();
+        // ELEMENTOS DEL DOM
+        const projectList = document.getElementById('projectList');
+        const activeProjectTitle = document.getElementById('activeProjectTitle');
+        const syncStatus = document.getElementById('syncStatus');
+        const logBody = document.getElementById('logBody');
 
-        onAuthStateChanged(auth, (u) => {
-            user = u;
-            if (user) {
-                document.getElementById('user-id-display').innerText = `ID: ${user.uid}`;
-                loadProjects();
-            }
-        });
+        // RELOJ
+        setInterval(() => {
+            document.getElementById('clock').innerText = new Date().toTimeString().split(' ')[0];
+        }, 1000);
 
-        // 2. Proyectos
-        window.loadProjects = () => {
-            if (!user) return;
-            const q = collection(db, 'artifacts', appId, 'users', user.uid, 'projects');
-            onSnapshot(q, (snapshot) => {
-                const projectList = document.getElementById('projectList');
-                projectList.innerHTML = "";
-                
-                if (snapshot.empty && !activeProjectId) {
-                    addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'projects'), {
-                        name: "Proyecto Demo",
-                        createdAt: serverTimestamp()
+        // INICIALIZACIÓN
+        const startApp = async () => {
+            if (firebaseConfig && firebaseConfig.apiKey) {
+                try {
+                    const app = initializeApp(firebaseConfig);
+                    auth = getAuth(app);
+                    db = getFirestore(app);
+                    isCloud = true;
+                    
+                    if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                        await signInWithCustomToken(auth, __initial_auth_token);
+                    } else {
+                        await signInAnonymously(auth);
+                    }
+
+                    onAuthStateChanged(auth, (u) => {
+                        user = u;
+                        if (user) {
+                            document.getElementById('user-id-display').innerText = `ID: ${user.uid}`;
+                            syncStatus.innerText = "● Nube Activa";
+                            syncStatus.className = "text-[10px] text-green-500 uppercase font-bold tracking-widest";
+                            loadProjects();
+                        }
                     });
+                } catch (e) {
+                    console.error("Error Firebase:", e);
+                    initLocalMode();
                 }
-
-                snapshot.forEach(docSnap => {
-                    const data = docSnap.data();
-                    const div = document.createElement('div');
-                    div.className = `project-tab p-3 rounded text-sm ${activeProjectId === docSnap.id ? 'active' : ''}`;
-                    div.innerText = data.name;
-                    div.onclick = () => selectProject(docSnap.id, data.name);
-                    projectList.appendChild(div);
-                });
-            }, (err) => console.error("Error cargando proyectos:", err));
-        };
-
-        window.createNewProject = async () => {
-            const name = prompt("Nombre del nuevo proyecto:");
-            if (name && user) {
-                await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'projects'), {
-                    name: name,
-                    createdAt: serverTimestamp()
-                });
+            } else {
+                initLocalMode();
             }
         };
 
-        window.selectProject = (id, name) => {
-            activeProjectId = id;
-            document.getElementById('activeProjectTitle').innerText = name;
-            loadLogs(id);
-            loadProjects();
-        };
-
-        // 3. Notas (Logs)
-        let unsubscribeLogs = null;
-        function loadLogs(projectId) {
-            if (unsubscribeLogs) unsubscribeLogs();
-            
-            const q = collection(db, 'artifacts', appId, 'users', user.uid, 'projects', projectId, 'logs');
-            unsubscribeLogs = onSnapshot(q, (snapshot) => {
-                currentLogs = [];
-                snapshot.forEach(doc => currentLogs.push({id: doc.id, ...doc.data()}));
-                currentLogs.sort((a, b) => (b.timestamp?.seconds || 0) - (a.timestamp?.seconds || 0));
-                renderLogs();
-            }, (err) => console.error("Error logs:", err));
+        function initLocalMode() {
+            isCloud = false;
+            syncStatus.innerText = "● Modo Local (Sin Nube)";
+            syncStatus.className = "text-[10px] text-gray-500 uppercase font-bold tracking-widest";
+            document.getElementById('user-id-display').innerText = "Guardado en Navegador";
+            loadProjectsLocal();
         }
 
-        window.logTake = async (status) => {
-            if (!user || !activeProjectId) return;
-            
-            const scene = document.getElementById('scene').value;
-            const take = document.getElementById('take').value;
-            const clip = document.getElementById('clip').value;
-            const notes = document.getElementById('notes').value;
-            const time = new Date().toTimeString().split(' ')[0];
+        // LÓGICA DE PROYECTOS
+        const renderProjectTab = (id, name) => {
+            const div = document.createElement('div');
+            div.className = `project-tab p-3 rounded text-sm ${activeProjectId === id ? 'active' : ''}`;
+            div.innerText = name;
+            div.onclick = () => selectProject(id, name);
+            projectList.appendChild(div);
+        };
 
-            await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'projects', activeProjectId, 'logs'), {
-                time,
-                scene,
-                take,
-                clip,
-                status,
-                notes,
-                timestamp: serverTimestamp()
+        const selectProject = (id, name) => {
+            activeProjectId = id;
+            activeProjectTitle.innerText = name;
+            document.querySelectorAll('.project-tab').forEach(t => {
+                t.classList.toggle('active', t.innerText === name);
             });
+            isCloud ? loadLogsCloud(id) : loadLogsLocal(id);
+        };
+
+        const loadProjects = () => {
+            const q = collection(db, 'artifacts', appId, 'users', user.uid, 'projects');
+            onSnapshot(q, (snapshot) => {
+                projectList.innerHTML = "";
+                snapshot.forEach(docSnap => renderProjectTab(docSnap.id, docSnap.data().name));
+            }, (err) => console.error("Error proyectos:", err));
+        };
+
+        const loadProjectsLocal = () => {
+            projectList.innerHTML = "";
+            const projects = JSON.parse(localStorage.getItem('local_projects') || '[]');
+            projects.forEach(p => renderProjectTab(p.id, p.name));
+        };
+
+        document.getElementById('btnNewProject').onclick = async () => {
+            const name = prompt("Nombre del nuevo proyecto:");
+            if (!name) return;
+
+            if (isCloud && user) {
+                await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'projects'), {
+                    name, createdAt: serverTimestamp()
+                });
+            } else {
+                const projects = JSON.parse(localStorage.getItem('local_projects') || '[]');
+                const newProj = { id: 'local_' + Date.now(), name };
+                projects.push(newProj);
+                localStorage.setItem('local_projects', JSON.stringify(projects));
+                loadProjectsLocal();
+                selectProject(newProj.id, newProj.name);
+            }
+        };
+
+        // LÓGICA DE TOMAS (LOGS)
+        let unsubscribeLogs = null;
+        const loadLogsCloud = (projectId) => {
+            if (unsubscribeLogs) unsubscribeLogs();
+            const q = collection(db, 'artifacts', appId, 'users', user.uid, 'projects', projectId, 'logs');
+            unsubscribeLogs = onSnapshot(q, (snapshot) => {
+                currentLogs = snapshot.docs.map(d => ({id: d.id, ...d.data()}))
+                             .sort((a, b) => {
+                                 const timeA = a.timestamp?.toMillis ? a.timestamp.toMillis() : (a.rawTime || 0);
+                                 const timeB = b.timestamp?.toMillis ? b.timestamp.toMillis() : (b.rawTime || 0);
+                                 return timeB - timeA;
+                             });
+                renderLogs();
+            }, (err) => console.error("Error logs:", err));
+        };
+
+        const loadLogsLocal = (projectId) => {
+            const allLogs = JSON.parse(localStorage.getItem('local_logs_' + projectId) || '[]');
+            currentLogs = allLogs.sort((a, b) => b.rawTime - a.rawTime);
+            renderLogs();
+        };
+
+        const logTake = async (status) => {
+            if (!activeProjectId) {
+                alert("Primero debes seleccionar o crear un proyecto en la izquierda");
+                return;
+            }
+            
+            const log = {
+                time: new Date().toLocaleTimeString(),
+                rawTime: Date.now(),
+                scene: document.getElementById('scene').value || "01",
+                take: document.getElementById('take').value || "1",
+                clip: document.getElementById('clip').value || "-",
+                notes: document.getElementById('notes').value || "",
+                status
+            };
+
+            if (isCloud && user) {
+                await addDoc(collection(db, 'artifacts', appId, 'users', user.uid, 'projects', activeProjectId, 'logs'), {
+                    ...log, timestamp: serverTimestamp()
+                });
+            } else {
+                const logs = JSON.parse(localStorage.getItem('local_logs_' + activeProjectId) || '[]');
+                logs.push(log);
+                localStorage.setItem('local_logs_' + activeProjectId, JSON.stringify(logs));
+                loadLogsLocal(activeProjectId);
+            }
 
             document.getElementById('notes').value = "";
-            document.getElementById('clip').value = ""; // Limpiar clip tras registrar
+            document.getElementById('clip').value = "";
             changeTake(1);
         };
 
-        window.deleteLog = async (logId) => {
-            if (!user || !activeProjectId) return;
-            await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'projects', activeProjectId, 'logs', logId));
-        };
-
-        function renderLogs() {
-            const body = document.getElementById('logBody');
-            body.innerHTML = "";
-            currentLogs.forEach((log) => {
-                const row = document.createElement('tr');
-                row.className = `border-b border-gray-800/50 hover:bg-white/5 transition-colors`;
-                row.innerHTML = `
+        const renderLogs = () => {
+            logBody.innerHTML = currentLogs.map(log => `
+                <tr class="border-b border-gray-800/50 hover:bg-white/5 transition-colors">
                     <td class="p-4 font-mono text-gray-500 text-xs">${log.time}</td>
                     <td class="p-4 font-bold text-white">${log.scene}</td>
                     <td class="p-4 text-gray-300">${log.take}</td>
@@ -277,36 +330,49 @@
                     </td>
                     <td class="p-4 text-gray-400 italic text-xs">${log.notes || '-'}</td>
                     <td class="p-4 text-right">
-                        <button onclick="deleteLog('${log.id}')" class="text-gray-700 hover:text-red-500 transition-colors">Eliminar</button>
+                        <button onclick="window.deleteEntry('${log.id || log.rawTime}')" class="text-gray-700 hover:text-red-500 transition-colors">Borrar</button>
                     </td>
-                `;
-                body.appendChild(row);
-            });
-        }
-
-        window.changeTake = (val) => {
-            const takeInput = document.getElementById('take');
-            let current = parseInt(takeInput.value);
-            if (current + val > 0) takeInput.value = current + val;
+                </tr>
+            `).join('');
         };
 
-        window.exportCSV = () => {
-            if (currentLogs.length === 0) return;
-            let csv = "Time,Scene,Take,Clip,Status,Notes\n";
-            currentLogs.forEach(l => csv += `${l.time},${l.scene},${l.take},${l.clip || ''},${l.status},"${l.notes}"\n`);
+        const changeTake = (val) => {
+            const input = document.getElementById('take');
+            input.value = Math.max(1, (parseInt(input.value) || 1) + val);
+        };
+
+        // EXPORTACIÓN A WINDOW PARA HTML
+        window.deleteEntry = async (id) => {
+            if (!confirm("¿Eliminar esta toma?")) return;
+            if (isCloud) {
+                await deleteDoc(doc(db, 'artifacts', appId, 'users', user.uid, 'projects', activeProjectId, 'logs', id));
+            } else {
+                const logs = currentLogs.filter(l => (l.id || l.rawTime).toString() !== id.toString());
+                localStorage.setItem('local_logs_' + activeProjectId, JSON.stringify(logs));
+                loadLogsLocal(activeProjectId);
+            }
+        };
+
+        // ASIGNACIÓN DE BOTONES
+        document.getElementById('btnGood').onclick = () => logTake('BUENA');
+        document.getElementById('btnBad').onclick = () => logTake('MALA');
+        document.getElementById('takeMinus').onclick = () => changeTake(-1);
+        document.getElementById('takePlus').onclick = () => changeTake(1);
+        document.getElementById('btnExport').onclick = () => {
+            if (!activeProjectId) return;
+            let csv = "Hora,Escena,Toma,Clip,Estado,Notas\n";
+            currentLogs.forEach(l => csv += `${l.time},${l.scene},${l.take},${l.clip},${l.status},"${l.notes}"\n`);
             const blob = new Blob([csv], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
+            const url = URL.createObjectURL(blob);
             const a = document.createElement('a');
+            a.download = `Reporte_${activeProjectTitle.innerText}.csv`;
             a.href = url;
-            a.download = `reporte_${document.getElementById('activeProjectTitle').innerText}.csv`;
             a.click();
         };
 
-        function updateClock() {
-            document.getElementById('clock').innerText = new Date().toTimeString().split(' ')[0];
-        }
-        setInterval(updateClock, 1000);
-        updateClock();
+        // INICIAR TODO
+        window.onload = startApp;
+
     </script>
 </body>
 </html>
